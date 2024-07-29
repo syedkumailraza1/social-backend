@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
-    "build": ""
+    "build": "netlify deploy --prod"
   },
   "author": "Syed Kumail Raza",
   "license": "ISC",
