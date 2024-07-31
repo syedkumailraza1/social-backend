@@ -4,12 +4,14 @@ import Serverless from "serverless-http"
 
 const app = express()
 
-const route= app.get("/",(req,res)=>{
+const router = express.Router()
+
+router.get("/", (req,res)=>{
     res.send("Hello from express")
 })
 
-app.use("/.netlify/functions/api",route)
+app.use("/.netlify/functions/api",router)
 
 
 
-export const handler = Serverless(app)
+module.exports.handler = Serverless(app)
