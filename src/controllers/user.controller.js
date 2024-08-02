@@ -3,6 +3,8 @@ import { uploadOnCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js"
 
 
+
+
 const registerUser = async (req,res)=>{
     //take user input in all the fields
     const {email,username,password,fullname} = req.body
@@ -72,4 +74,87 @@ const registerUser = async (req,res)=>{
     
 }
 
-export default registerUser
+const userLogin = async (req,res)=>{
+    //get email or username and password from user
+    const { username, password } = req.body;
+    //console.log(username, password);
+
+    if (!username) {
+        return res.status(400).json({ message: "Username is required" });
+    }
+    //check wheater user exists or not
+
+    const user =  await User.findOne(
+        { 
+           username 
+        }
+    )
+
+    if (!user) {
+        return res.status(404).json({message:"User not exist"})
+    }
+
+    //check password
+    const isPasswordValid = await user.isPasswordCorrect(password)
+    if(!isPasswordValid){
+        return res.status(400).json({message:"Invalid Password"})
+    }
+    
+    //generate refresh and access tokens
+
+    const {accessToken,refreshToken} = await generateTokens(user._id)
+    //console.log("The access Token is: ",accessToken);
+
+    //send the tokens through cookie
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    res.status(200)
+    .cookie("accessToken",accessToken,options)
+    .cookie("refreshToken", refreshToken,options)
+    .json({user:loggedInUser,accessToken,refreshToken})
+
+    console.log("User Logged In Successfully!");
+        
+    
+}
+
+const generateTokens = async (userID)=>{
+    try {
+        const user = await User.findById(userID)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken
+       await user.save({validationBeforeSave:false})
+       return {accessToken,refreshToken}
+
+    } catch (error) {
+        console.log("Error while Generating Tokens: ",error)
+    }
+}
+
+//logout
+const userLogout = async (req,res)=>{
+    //remove refresh token from user document
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set: {refreshToken: undefined } 
+        },
+        {new:true}        
+    )
+    const options = {
+        httpOnly: true,
+        secure: true
+    }
+
+    return res.status(200).clearCookie("accessToken",options).clearCookie("refreshToken",options)
+    .json({message:"Logged out successfully"})
+}
+
+export  { registerUser, userLogin, userLogout}
